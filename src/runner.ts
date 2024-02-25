@@ -5,8 +5,8 @@ import {Notice} from "obsidian";
 import * as path from "path";
 
 const binPath: Record<string, string> = Object.freeze({
-	darwin: "topi",
-	win32: "topi.exe",
+	darwin: "./topi/topi",
+	win32: "./topi/topi.exe",
 })
 
 export class TopiRunner {
