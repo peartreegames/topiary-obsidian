@@ -13,7 +13,7 @@ export class TopiRunner {
 	plugin: TopiPlugin;
 	get path(): string {
 		// @ts-ignore
-		return path.join(this.plugin.app.vault.adapter.basePath, this.plugin.app.vault.configDir, 'plugins', 'topiary-obisidian', binPath[process.platform]);
+		return path.join(this.plugin.app.vault.adapter.basePath, this.plugin.app.vault.configDir, 'plugins', 'topiary-obsidian', binPath[process.platform]);
 	}
 
 	constructor(plugin: TopiPlugin) {
