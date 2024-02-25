@@ -2,10 +2,15 @@
 
 Adds topi file support along with syntax highlighting and compilation to obsidian.md
 
-## Installation
+## Compilation 
 
-Download `topiary-obsidian.zip` from the release page. Unzip in your vault `your-vault/.obsidian/topiary-obsidian`
+Downloaded the latest [topiary release](https://github.com/peartreegames/topiary/releases) executable (`topi`|`topi.exe`)
+Then in the `Settings > Topiary > Topi CLI Path` input the full path to the downloaded binary.
 
-If on mac, to get around the malicious software notification you'll need to open the folder in finder 
-then alt-click on the `topi/topi` file and select open. 
-Then click Open on the popup alert.
+## Screenshots
+
+Nord theme
+
+[](https://raw.githubusercontent.com/peartreegames/topiary-obsidian/main/docs/screenshot.png)
+
+[](https://raw.githubusercontent.com/peartreegames/topiary-obsidian/main/docs/linting.png)
