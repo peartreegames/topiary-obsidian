@@ -28,9 +28,7 @@ const context = await esbuild.context({
 		"@codemirror/search",
 		"@codemirror/state",
 		"@codemirror/view",
-		"@lezer/common",
 		"@lezer/highlight",
-		"@lezer/lr",
 		...builtins],
 	format: "cjs",
 	target: "es2018",
@@ -38,6 +36,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
 	outfile: "main.js",
+	loader: {'.svg': 'text'},
 });
 
 if (prod) {
