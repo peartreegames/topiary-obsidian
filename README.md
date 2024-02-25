@@ -11,6 +11,6 @@ Then in the `Settings > Topiary > Topi CLI Path` input the full path to the down
 
 Nord theme
 
-[](https://raw.githubusercontent.com/peartreegames/topiary-obsidian/main/docs/screenshot.png)
+![](https://github.com/peartreegames/topiary-obsidian/blob/main/docs/screenshot.png)
 
-[](https://raw.githubusercontent.com/peartreegames/topiary-obsidian/main/docs/linting.png)
+![](https://github.com/peartreegames/topiary-obsidian/blob/main/docs/linting.png)
