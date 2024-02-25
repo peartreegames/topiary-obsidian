@@ -50,7 +50,7 @@ export class TopiView extends TextFileView {
 				await this.save();
 				// @ts-ignore
 				const path = this.app.vault.adapter.basePath + '/' + this.file.path;
-				const compile = await this.plugin.runner.runCommand([path, '--dry'], diagnostics);
+				await this.plugin.runner.runCommand([path, '--dry'], diagnostics);
 				return diagnostics;
 			}),
 			EditorView.updateListener.of((update) => {
@@ -78,7 +78,11 @@ export class TopiView extends TextFileView {
 	async onLoadFile(file: TFile): Promise<void> {
 		this.file = file;
 		const content = await this.app.vault.read(file);
-		this.setViewData(content, false);
+		this.setViewData(content, true);
+	}
+
+	async onUnloadFile(file: TFile): Promise<void> {
+		await this.save(true);
 	}
 
 	getViewData(): string {
@@ -87,16 +91,16 @@ export class TopiView extends TextFileView {
 
 	setViewData(data: string, clear: boolean): void {
 		if (clear) this.clear();
-		else this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: data}]})
+		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: data}], sequential: true })
 	}
 
 	clear(): void {
-		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: ''}]})
+		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: ''}], sequential: true })
 	}
 
 	async save(clear: boolean = false) {
 		try {
-			if (this.file) await this.app.vault.modify(this.file, this.cm.state.doc.toString());
+			if (this.file) await this.app.vault.modify(this.file, this.getViewData());
 			if (clear) this.clear();
 		} catch (err) {
 			console.error('[topi]', 'Save failed:', err);

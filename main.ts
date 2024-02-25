@@ -1,14 +1,15 @@
 import {addIcon, Plugin, WorkspaceLeaf} from 'obsidian';
 import {TopiView} from "./src/view";
-import {DEFAULT_SETTINGS, TopiSettings, TopiSettingTab} from "./src/settings";
 import {TopiRunner} from "./src/runner";
 import icon from 'icon.svg';
+import {DEFAULT_SETTINGS, TopiSettings, TopiSettingTab} from "./src/settings";
 export default class TopiPlugin extends Plugin {
 	settings: TopiSettings;
 	runner: TopiRunner;
 
 	async onload() {
 		let svg_text = icon;
+		// remove surrounding tags
 		svg_text = svg_text.replace(/<\?xml.*?\?>\s*/g, '');
 		svg_text = svg_text.replace(/<!--.*?-->\s*/g, '');
 		svg_text = svg_text.replace(/<svg[\s\S]*?>\s*/g, '');

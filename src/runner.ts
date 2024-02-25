@@ -1,56 +1,34 @@
-import {execSync, spawn} from "child_process";
+import {exec} from "child_process";
 import TopiPlugin from "../main";
 import {Diagnostic} from "@codemirror/lint";
 import {Notice} from "obsidian";
-import * as path from "path";
+import {existsSync} from "fs";
+import {promisify} from "util";
 
-const binPath: Record<string, string> = Object.freeze({
-	darwin: "./topi/topi",
-	win32: "./topi/topi.exe",
-})
+const execPromise = promisify(exec);
 
 export class TopiRunner {
 	plugin: TopiPlugin;
-	get path(): string {
-		// @ts-ignore
-		return path.join(this.plugin.app.vault.adapter.basePath, this.plugin.app.vault.configDir, 'plugins', 'topiary-obsidian', binPath[process.platform]);
-	}
+	latestId: string;
 
 	constructor(plugin: TopiPlugin) {
 		this.plugin = plugin;
 	}
 
-	public async runCommand(args: string[], diagnostics: Diagnostic[]): Promise<string> {
-		return new Promise<string>((resolve, reject) => {
-			const platform = process.platform;
-			const bin = binPath[platform];
-			if (!bin) {
-				reject(`Unsupported platform: ${platform}`);
-				return;
-			}
-
-			const child = spawn(this.path, args);
-
-			child.stdout.on("data", (msg: ArrayBuffer) => {
-				console.log('[topi]', msg.toString());
-			});
-			child.stderr.on("data", (msg: ArrayBuffer) => {
-				const result = this.parseError(msg.toString());
-				if (!result) return;
-				diagnostics.push(result);
-			});
-
-			child.on("error", (err) => {
-				console.error('[topi]', err.toString());
-				reject(err);
-			});
-
-			child.on("close", (code) => {
-				if (code === 0) resolve("Complete");
-				else reject("Error");
-			});
-		});
-
+	public async runCommand(args: string[], diagnostics: Diagnostic[]): Promise<void> {
+		let path = this.plugin.settings.path;
+		if (!existsSync(path)) return;
+		try {
+			const id = Math.random().toString();
+			this.latestId = id;
+			const {stderr} = await execPromise(`${path} ${args.join(' ')}`)
+			if (!stderr || this.latestId !== id) return;
+			const result = this.parseError(stderr);
+			if (result !== null) diagnostics.push(result);
+		} catch (err) {
+			console.error('[topi]', err.toString());
+			new Notice('[topi] Error running topi');
+		}
 	}
 
 	private parseError(msg: string | object): Diagnostic | null {
@@ -59,8 +37,8 @@ export class TopiRunner {
 		const regex = /error: ([^\n]+)\ntype: (.*?), line: (\d+), column_start: (\d+), column_end: (\d+), source_start: (\d+), source_end: (\d+)/;
 		const match = colorRemoved?.match(regex);
 		if (!match) {
-			execSync(`echo "${colorRemoved}" | pbcopy`)
-			new Notice(`Could not parse the error message.\n${colorRemoved}`);
+			console.error(`[topi] Could not parse the error message.\n${colorRemoved}`);
+			new Notice('[topi] Could not parse the error message, check logs');
 			return null;
 		}
 		const from = Number(match[6]);
