@@ -16,7 +16,7 @@ export class TopiRunner {
 	}
 
 	public async runCommand(args: string[], diagnostics: Diagnostic[]): Promise<void> {
-		let path = this.plugin.settings.path;
+		const path = this.plugin.settings.path;
 		if (!existsSync(path)) return;
 		try {
 			const id = Math.random().toString();
@@ -33,6 +33,7 @@ export class TopiRunner {
 
 	private parseError(msg: string | object): Diagnostic | null {
 		if (typeof msg !== 'string') return null;
+		// eslint-disable-next-line no-control-regex
 		const colorRemoved = msg.replace(/\x1b\[\d+(;\d+m|m)/g, "");
 		const regex = /error: ([^\n]+)\ntype: (.*?), line: (\d+), column_start: (\d+), column_end: (\d+), source_start: (\d+), source_end: (\d+)/;
 		const match = colorRemoved?.match(regex);
@@ -42,7 +43,7 @@ export class TopiRunner {
 			return null;
 		}
 		const from = Number(match[6]);
-		let to = Number(match[7]);
+		const to = Number(match[7]);
 		return {
 			from,
 			to,

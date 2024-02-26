@@ -43,9 +43,7 @@ export default class TopiPlugin extends Plugin {
 		this.addSettingTab(new TopiSettingTab(this.app, this));
 	}
 
-	topiViewCreator = (leaf: WorkspaceLeaf) => {
-		 return new TopiView(leaf, this);
-	}
+	topiViewCreator = (leaf: WorkspaceLeaf) => new TopiView(leaf, this)
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());

@@ -1,10 +1,10 @@
 import {
 	HighlightStyle,
-	syntaxHighlighting
+	syntaxHighlighting,
 } from "@codemirror/language";
 import {tags} from "@lezer/highlight";
 import {Notice, TextFileView, TFile, WorkspaceLeaf} from "obsidian";
-import {EditorView, keymap} from "@codemirror/view";
+import {EditorView, keymap, tooltips} from "@codemirror/view";
 import {topi} from "codemirror-lang-topi";
 import {indentWithTab} from "@codemirror/commands";
 import {vim} from "@replit/codemirror-vim";
@@ -12,6 +12,8 @@ import {basicSetup} from "codemirror";
 import {Diagnostic, linter, lintGutter} from "@codemirror/lint";
 import TopiPlugin from "../main";
 import {autocompletion} from "@codemirror/autocomplete";
+import {Compartment, EditorState} from "@codemirror/state";
+import {Completion, getCompletions} from "./completion";
 
 export const highlight = HighlightStyle.define([
 	{
@@ -28,21 +30,29 @@ export const highlight = HighlightStyle.define([
 	{tag: tags.name, color: "var(--text-muted)"}
 ]);
 
+const tabSize = new Compartment()
+
 export class TopiView extends TextFileView {
 	cm: EditorView;
 	file: TFile;
 	plugin: TopiPlugin;
+	completion: Completion;
 
 	constructor(leaf: WorkspaceLeaf, plugin: TopiPlugin) {
 		super(leaf);
 		this.plugin = plugin;
+		this.completion = new Completion()
 		const extensions = [
 			topi(),
 			basicSetup,
 			keymap.of([indentWithTab]),
 			syntaxHighlighting(highlight),
+			tabSize.of(EditorState.tabSize.of(4)),
 			lintGutter(),
-			autocompletion(),
+			tooltips({
+				parent: this.contentEl,
+			}),
+			autocompletion({ override: [getCompletions(this.completion)]}),
 			EditorView.lineWrapping,
 			linter(async (view) => {
 				if (!this.file) return [];
@@ -54,7 +64,12 @@ export class TopiView extends TextFileView {
 				return diagnostics;
 			}),
 			EditorView.updateListener.of((update) => {
-				if (update.docChanged) this.requestSave();
+				if (update.docChanged) {
+					this.data = update.state.doc.toString();
+					this.completion.updateBoughs(this.data);
+					this.completion.updateSpeakers(this.data);
+					this.requestSave();
+				}
 			}),
 			EditorView.theme({
 				'&.cm-focused': {outline: 0},
@@ -98,7 +113,7 @@ export class TopiView extends TextFileView {
 		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: ''}], sequential: true })
 	}
 
-	async save(clear: boolean = false) {
+	async save(clear = false) {
 		try {
 			if (this.file) await this.app.vault.modify(this.file, this.getViewData());
 			if (clear) this.clear();
