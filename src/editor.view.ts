@@ -5,13 +5,12 @@ import {
 import {tags} from "@lezer/highlight";
 import {Notice, TextFileView, TFile, WorkspaceLeaf} from "obsidian";
 import {EditorView, keymap, tooltips} from "@codemirror/view";
-import {topi} from "codemirror-lang-topi";
+import {topi, topiLanguage} from "codemirror-lang-topi";
 import {indentWithTab} from "@codemirror/commands";
 import {vim} from "@replit/codemirror-vim";
 import {basicSetup} from "codemirror";
 import {Diagnostic, linter, lintGutter} from "@codemirror/lint";
 import TopiPlugin from "../main";
-import {autocompletion} from "@codemirror/autocomplete";
 import {Compartment, EditorState} from "@codemirror/state";
 import {Completion, getCompletions} from "./completion";
 
@@ -32,9 +31,9 @@ export const highlight = HighlightStyle.define([
 
 const tabSize = new Compartment()
 
-export class TopiView extends TextFileView {
+export class TopiEditorView extends TextFileView {
 	cm: EditorView;
-	file: TFile;
+	file: TFile | null;
 	plugin: TopiPlugin;
 	completion: Completion;
 
@@ -42,6 +41,14 @@ export class TopiView extends TextFileView {
 		super(leaf);
 		this.plugin = plugin;
 		this.completion = new Completion()
+		this.cm = new EditorView({
+			extensions: this.createExtensions(),
+			parent: this.contentEl,
+		})
+	}
+
+	createExtensions() {
+		const completeSource = getCompletions(this.completion);
 		const extensions = [
 			topi(),
 			basicSetup,
@@ -50,9 +57,10 @@ export class TopiView extends TextFileView {
 			tabSize.of(EditorState.tabSize.of(4)),
 			lintGutter(),
 			tooltips({
-				parent: this.contentEl,
+				position: 'fixed',
+				parent: document.body,
 			}),
-			autocompletion({ override: [getCompletions(this.completion)]}),
+			topiLanguage.data.of({autocomplete: completeSource}),
 			EditorView.lineWrapping,
 			linter(async (view) => {
 				if (!this.file) return [];
@@ -60,7 +68,7 @@ export class TopiView extends TextFileView {
 				await this.save();
 				// @ts-ignore
 				const path = this.app.vault.adapter.basePath + '/' + this.file.path;
-				await this.plugin.runner.runCommand([path, '--dry'], diagnostics);
+				await this.plugin.runner.runCompile(['compile', path, '--dry'], diagnostics);
 				return diagnostics;
 			}),
 			EditorView.updateListener.of((update) => {
@@ -75,8 +83,8 @@ export class TopiView extends TextFileView {
 				'&.cm-focused': {outline: 0},
 				'.cm-gutters': {backgroundColor: 'inherit'},
 				'.cm-activeLine': {backgroundColor: 'inherit'},
-				'.cm-cursor': {borderLeftColor: 'var(--text-normal)' },
-				'.cm-lint-marker': { marginTop: '25%' },
+				'.cm-cursor': {borderLeftColor: 'var(--text-normal)'},
+				'.cm-lint-marker': {marginTop: '25%'},
 				".cm-content, .cm-gutters, .cm-gutter": {minHeight: "100vh"}
 			}, {
 				dark: document.body.hasClass('theme-dark'),
@@ -84,20 +92,18 @@ export class TopiView extends TextFileView {
 		];
 		//@ts-ignore
 		if (this.app.vault.getConfig("vimMode")) extensions.push(vim());
-		this.cm = new EditorView({
-			extensions,
-			parent: this.contentEl,
-		})
+		return extensions;
 	}
 
 	async onLoadFile(file: TFile): Promise<void> {
-		this.file = file;
 		const content = await this.app.vault.read(file);
-		this.setViewData(content, true);
+		this.file = file;
+		this.cm.setState(EditorState.create({ extensions: this.createExtensions(), doc: content }));
 	}
 
 	async onUnloadFile(file: TFile): Promise<void> {
 		await this.save(true);
+		this.file = null;
 	}
 
 	getViewData(): string {
@@ -106,11 +112,11 @@ export class TopiView extends TextFileView {
 
 	setViewData(data: string, clear: boolean): void {
 		if (clear) this.clear();
-		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: data}], sequential: true })
+		else this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: data}], sequential: true})
 	}
 
 	clear(): void {
-		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: ''}], sequential: true })
+		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: ''}], sequential: true})
 	}
 
 	async save(clear = false) {

@@ -1,8 +1,8 @@
 import {CompletionContext, CompletionResult} from "@codemirror/autocomplete";
 
 export class Completion {
-	speakers: { label: string, type: string }[];
-	boughs: { label: string, type: string }[];
+	speakers: { label: string }[];
+	boughs: { label: string }[];
 
 	constructor() {
 		this.speakers = [];
@@ -16,7 +16,7 @@ export class Completion {
 		while ((match = speakerRegEx.exec(source)) !== null) {
 			if (match[1]) speakers.add(match[1]);
 		}
-		this.speakers = [...speakers].map(s => ({ label: s, type: 'variable'}));
+		this.speakers = [...speakers].map(s => ({ label: s}));
 	}
 
 	updateBoughs(source: string) {
@@ -26,15 +26,17 @@ export class Completion {
 		while ((match = boughRegEx.exec(source)) !== null) {
 			if (match[1]) boughs.add(match[1]);
 		}
-		this.boughs = [...boughs].map(b => ({ label: b, type: 'variable' }));
+		this.boughs = [...boughs].map(b => ({ label: b }));
 	}
 }
 
 export const getCompletions = (completion: Completion) => (context: CompletionContext): CompletionResult | null => {
 	const speaker = context.matchBefore(/:/);
-	if (speaker != null) return {
-		from: speaker.from,
-		options: completion.speakers,
+	if (speaker !== null) {
+		return {
+			from: speaker.from,
+			options: completion.speakers,
+		}
 	}
 
 	const bough = context.matchBefore(/=>\s*/);
