@@ -1,11 +1,14 @@
-import {addIcon, Plugin, WorkspaceLeaf} from 'obsidian';
-import {TopiView} from "./src/view";
-import {TopiRunner} from "./src/runner";
+import { addIcon, Plugin, WorkspaceLeaf } from 'obsidian';
+import { TopiEditorView } from "./src/editor.view";
+import { TopiLibrary } from "./src/library";
 import icon from 'icon.svg';
-import {DEFAULT_SETTINGS, TopiSettings, TopiSettingTab} from "./src/settings";
+import { DEFAULT_SETTINGS, TopiSettings, TopiSettingTab } from "./src/settings";
+import { TopiPlayerView } from 'src/player.view';
+
 export default class TopiPlugin extends Plugin {
 	settings: TopiSettings;
-	runner: TopiRunner;
+	runner: TopiLibrary;
+	player: TopiPlayerView;
 
 	async onload() {
 		let svg_text = icon;
@@ -21,11 +24,20 @@ export default class TopiPlugin extends Plugin {
 			await this.app.vault.create("/untitled.topi", this.settings.template)
 		});
 
+		// const right = this.app.workspace.getRightLeaf(true);
+
+		this.addRibbonIcon("dice", "Print leaf types", () => {
+		      this.app.workspace.iterateAllLeaves((leaf) => {
+		        console.log(leaf.getViewState().type);
+		      });
+		    });		
+		this.registerView("topi-player", this.topiPlayerViewCreator);
+
 		const statusBarItemEl = this.addStatusBarItem();
 		statusBarItemEl.setText('topi');
 
 		this.registerExtensions(["topi"], "topi");
-		this.runner = new TopiRunner(this);
+		this.runner = new TopiLibrary(this);
 		this.registerView("topi", this.topiViewCreator);
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu, file) => {
@@ -43,7 +55,8 @@ export default class TopiPlugin extends Plugin {
 		this.addSettingTab(new TopiSettingTab(this.app, this));
 	}
 
-	topiViewCreator = (leaf: WorkspaceLeaf) => new TopiView(leaf, this)
+	topiViewCreator = (leaf: WorkspaceLeaf) => new TopiEditorView(leaf, this);
+	topiPlayerViewCreator = (leaf: WorkspaceLeaf) => new TopiPlayerView(leaf);
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
