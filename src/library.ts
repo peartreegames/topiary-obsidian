@@ -9,11 +9,14 @@ const execPromise = promisify(exec);
 
 export class TopiLibrary {
 	plugin: TopiPlugin;
-	latestId: string;
+	latestCompileId: string;
+	latestRunId: string;
 	child: ChildProcess;
 
 	constructor(plugin: TopiPlugin) {
 		this.plugin = plugin;
+		this.continue = this.continue.bind(this);
+		this.choose = this.choose.bind(this);
 	}
 
 	public async runCompile(args: string[], diagnostics: Diagnostic[]): Promise<void> {
@@ -21,9 +24,9 @@ export class TopiLibrary {
 		if (!existsSync(path)) return;
 		try {
 			const id = Math.random().toString();
-			this.latestId = id;
+			this.latestCompileId = id;
 			const { stderr } = await execPromise(`${path} ${args.join(' ')}`)
-			if (!stderr || this.latestId !== id) return;
+			if (!stderr || this.latestCompileId !== id) return;
 			const result = this.parseCompilerError(stderr);
 			if (result !== null) diagnostics.push(result);
 		} catch (err) {
@@ -34,21 +37,27 @@ export class TopiLibrary {
 
 	public async runTopi(args: string[]): Promise<void> {
 		const path = this.plugin.settings.path;
-		if (!existsSync(path)) return;
+		if (!path || !this.plugin.player) return;
+		if (!existsSync(path)) {
+			console.warn(`Could not find topi at ${path}`)
+			return;
+		}
 		const id = Math.random().toString();
-		this.latestId = id;
+		this.latestRunId = id;
 
 		// use spawn so we can provide input
 		if (this.child) this.child.kill("SIGTERM");
 		const child = spawn(path, args);
 		child.stdout.on('data', (data) => {
-			if (this.latestId !== id) return;
+			data = data.toString();
+			if (this.latestRunId !== id) return;
 			if (data.startsWith(":")) this.plugin.player.appendDialogue(data, this.continue);
 			if (data.startsWith("[")) this.plugin.player.appendChoice(data, this.choose);
 		});
 
 		child.stderr.on('data', (data) => {
-			if (this.latestId !== id) return;
+			data = data.toString();
+			if (this.latestRunId !== id) return;
 			this.plugin.player.appendError(data);
 		});
 
@@ -61,15 +70,12 @@ export class TopiLibrary {
 
 	public async continue() {
 		if (!this.child) return;
-		this.child.stdin?.write(" ");
-		this.child.stdin?.end();
+		this.child.stdin?.write(" \n");
 	}
 
 	public async choose(i: number) {
 		if (!this.child) return;
-		this.child.stdin?.write(i.toString());
-		this.child.stdin?.end();
-		
+		this.child.stdin?.write(`${i.toString()}\n`);
 	}
 
 	private parseCompilerError(msg: string | object): Diagnostic | null {

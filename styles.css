@@ -1,0 +1,31 @@
+.topi-player {
+	padding: 1.5em;
+}
+
+.topi-speaker {
+	font-weight: bold;
+}
+
+.topi-text {
+	padding: 0;
+	margin: 0.1em;
+}
+
+.topi-choice {
+	text-align: center;	
+}
+
+.topi-error {
+	margin: 0.2em;
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+
+.fade-in {
+	opacity: 0;
+	animation: fadeIn 0.25s ease;
+	animation-fill-mode: forwards;
+}

@@ -1,13 +1,22 @@
+import TopiPlugin from "main";
 import { View, WorkspaceLeaf } from "obsidian";
 import { playButton, restartButton } from "./icons";
 
 export class TopiPlayerView extends View {
 
 	view: HTMLElement;
+	plugin: TopiPlugin;
 	history: Uint8Array[];
-	constructor(leaf: WorkspaceLeaf) {
+	
+	constructor(leaf: WorkspaceLeaf, plugin: TopiPlugin) {
 		super(leaf);
+		this.plugin = plugin;
 		this.view = this.containerEl;
+		this.view.addClass("topi-player");
+	}
+
+	getIcon(): string {
+		return "topi";
 	}
 
 	getViewType(): string {
@@ -18,43 +27,64 @@ export class TopiPlayerView extends View {
 		return "topi player";
 	}
 
-	appendDialogue(msg: string, callback: () => void) {
-		const text = msg.split('#');
+	async appendDialogue(msg: string, callback: () => void) {
+		if (!this.view) return;
+		const text = msg.replace(/<.*?>/g, "").split('#');
 		const p = this.view.createEl('p', {
-			cls: 'fade-in'
+			cls: ['fade-in', 'topi-text']
 		});
-		p.innerText = text[0];
+
+		const regex = /:(.*?):\s*(.+)/;
+		const match = text[0].match(regex);
+		if (match) {
+			const speaker = p.createEl('span', {
+				cls: ['topi-speaker']
+			});
+			speaker.innerText = match[1].toUpperCase() + ": ";
+			speaker.addClass('topi-speaker');
+			const content = p.createSpan();
+			content.innerText = match[2];
+					}
 		if (text.length > 1) {
-			const t = this.view.createEl('p', {
-				cls: ['fade-in', 'ink-tags']
+			const t = this.view.createEl('span', {
+				cls: ['fade-in', 'topi-tags']
 			});
 			t.innerText = `# ${text.slice(1).join(', ')}`;
 		}
+		await new Promise(res => setTimeout(res, 100));
 		callback();
 	}
 
 	appendError(msg: string) {
+		if (!this.view) return;
 		const p = this.view.createEl('p', {
-			cls: 'error'
+			cls: ['fade-in', 'topi-error']
 		});
 		p.innerText = msg;
 	}
 
 	appendChoice(msg: string, choose: (i: number) => void) {
-
+		if (!this.view) return;
+		this.view.createEl('hr');
 		const regex = /\[(\d+)\]\s+(.+)/;
-		const match = msg.match(regex);
-
-		if (match) {
-			const index = parseInt(match[1]);
-			const text = match[2];
-			const p = this.view.createEl('p', {
-				cls: ['ink-text', 'fade-in', 'ink-choice']
-			});
-			const c = p.createEl('a');
-			c.innerText = text;
-			c.addEventListener("mouseup", () => choose(index));
-			this.view.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+		const lines = msg.split('\n');
+		for (const line of lines) {
+			const match = line.match(regex);
+			if (match) {
+				const index = parseInt(match[1]);
+				const text = match[2];
+				const p = this.view.createEl('p', {
+					cls: ['topi-text', 'fade-in', 'topi-choice']
+				});
+				const c = p.createEl('a');
+				c.innerText = text;
+				c.addEventListener("mouseup", () => {
+					const choices = this.view.findAll('.topi-choice');
+					for (const choice of choices) this.view.removeChild(choice);
+					choose(index);
+				});
+				this.view.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+			}
 		}
 	}
 
@@ -111,8 +141,6 @@ export class TopiPlayerView extends View {
 
 
 	choose(i: number): void {
-		const choices = this.view.findAll('.ink-choice');
-		for (const choice of choices) this.view.removeChild(choice);
 		this.view.createEl('hr');
 	};
 }
