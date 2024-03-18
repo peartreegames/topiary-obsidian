@@ -4,6 +4,7 @@ import { Diagnostic } from "@codemirror/lint";
 import { Notice } from "obsidian";
 import { existsSync } from "fs";
 import { promisify } from "util";
+import { EOL } from 'os';
 
 const execPromise = promisify(exec);
 
@@ -43,6 +44,7 @@ export class TopiLibrary {
 			return;
 		}
 		const id = Math.random().toString();
+		this.plugin.player.clear();
 		this.latestRunId = id;
 
 		// use spawn so we can provide input
@@ -70,12 +72,12 @@ export class TopiLibrary {
 
 	public async continue() {
 		if (!this.child) return;
-		this.child.stdin?.write(" \n");
+		this.child.stdin?.write(` ${EOL}`);
 	}
 
 	public async choose(i: number) {
 		if (!this.child) return;
-		this.child.stdin?.write(`${i.toString()}\n`);
+		this.child.stdin?.write(`${i.toString()}${EOL}`);
 	}
 
 	private parseCompilerError(msg: string | object): Diagnostic | null {

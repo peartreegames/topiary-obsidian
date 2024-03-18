@@ -78,6 +78,6 @@ export default class TopiPlugin extends Plugin {
 	}
 
 	onunload() {
-
+		if (this.runner.child) this.runner.child.kill("SIGTERM");
 	}
 }

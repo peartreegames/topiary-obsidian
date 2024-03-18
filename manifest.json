@@ -1,7 +1,7 @@
 {
 	"id": "topiary-obsidian",
 	"name": "Topiary",
-	"version": "0.1.0",
+	"version": "0.3.1",
 	"minAppVersion": "0.15.0",
 	"description": "Adds topi language support",
 	"author": "bgk",

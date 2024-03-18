@@ -2,39 +2,70 @@ import {
 	HighlightStyle,
 	syntaxHighlighting,
 } from "@codemirror/language";
-import { tags } from "@lezer/highlight";
-import { Notice, TextFileView, TFile, WorkspaceLeaf } from "obsidian";
-import { EditorView, keymap, tooltips, GutterMarker, gutter } from "@codemirror/view";
-import { topi, topiLanguage } from "codemirror-lang-topi";
-import { indentWithTab } from "@codemirror/commands";
-import { vim } from "@replit/codemirror-vim";
-import { basicSetup } from "codemirror";
-import { Diagnostic, linter, lintGutter } from "@codemirror/lint";
+import {tags} from "@lezer/highlight";
+import {Notice, TextFileView, TFile, WorkspaceLeaf} from "obsidian";
+import {BlockInfo, EditorView, keymap, tooltips} from "@codemirror/view";
+import {gutter, GutterMarker} from '@codemirror/gutter';
+import {topi, topiLanguage} from "codemirror-lang-topi";
+import {indentWithTab} from "@codemirror/commands";
+import {vim} from "@replit/codemirror-vim";
+import {basicSetup} from "codemirror";
+import {Diagnostic, linter, lintGutter} from "@codemirror/lint";
 import TopiPlugin from "../main";
-import { Compartment, EditorState } from "@codemirror/state";
-import { Completion, getCompletions } from "./completion";
+import {Compartment, EditorState, Text} from "@codemirror/state";
+import {syntaxTree} from "@codemirror/language";
+import {Completion, getCompletions} from "./completion";
+import {playButton} from "./icons";
+import {SyntaxNode, Tree} from "@lezer/common";
 
 export const highlight = HighlightStyle.define([
 	{
 		tag: [tags.keyword, tags.definitionKeyword, tags.logicOperator, tags.arithmeticOperator, tags.compareOperator, tags.definitionOperator],
 		color: "var(--h6-color)"
 	},
-	{ tag: [tags.bool, tags.null], color: "var(--h6-color)" },
-	{ tag: tags.string, color: "var(--h3-color)" },
-	{ tag: [tags.number], color: "var(--text-accent)" },
-	{ tag: tags.controlKeyword, color: "var(--h2-color)", fontStyle: "bold" },
-	{ tag: [tags.lineComment, tags.comment], color: "var(--background-secondary-alt)", fontStyle: "italic" },
-	{ tag: tags.controlOperator, color: "var(--h6-color)" },
-	{ tag: tags.tagName, color: "var(--tag-color)", fontStyle: "italic" },
-	{ tag: tags.name, color: "var(--text-muted)" }
+	{tag: [tags.bool, tags.null], color: "var(--h6-color)"},
+	{tag: tags.string, color: "var(--h3-color)"},
+	{tag: [tags.number], color: "var(--text-accent)"},
+	{tag: tags.controlKeyword, color: "var(--h2-color)", fontStyle: "bold"},
+	{tag: [tags.lineComment, tags.comment], color: "var(--background-secondary-alt)", fontStyle: "italic"},
+	{tag: tags.controlOperator, color: "var(--h6-color)"},
+	{tag: tags.tagName, color: "var(--tag-color)", fontStyle: "italic"},
+	{tag: tags.name, color: "var(--text-muted)"}
 ]);
 
-const tabSize = new Compartment()
 
-
-const playMarker = new class extends GutterMarker {
-  toDOM() { return document.createTextNode("►") }
+function getClickedHierarchy(node: SyntaxNode, doc: Text, clickedPos: number): string | null {
+	if (node.from <= clickedPos && clickedPos <= node.to) {
+		if (node.name === "BoughStatement") {
+			const nameNode = node.firstChild?.nextSibling;
+			if (!nameNode) return null;
+			const name = nameNode ? doc.sliceString(nameNode.from, nameNode.to) : 'anonymous';
+			for (let i = node.firstChild; i != null; i = i.nextSibling) {
+				const childResult = getClickedHierarchy(i as SyntaxNode, doc, clickedPos);
+				if (childResult !== null) {
+					return `${name}.${childResult}`;
+				}
+			}
+			return name;
+		}
+		for (let i = node.firstChild; i != null; i = i.nextSibling) {
+			const result = getClickedHierarchy(i as SyntaxNode, doc, clickedPos);
+			if (result) return result;
+		}
+	}
+	return null;
 }
+
+const tabSize = new Compartment()
+const playMarker = new class extends GutterMarker {
+	toDOM() {
+		const svgWrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		svgWrapper.innerHTML = playButton;
+		svgWrapper.addClass('topi-play');
+		return svgWrapper;
+	}
+}
+
 export class TopiEditorView extends TextFileView {
 	cm: EditorView;
 	file: TFile | null;
@@ -53,6 +84,9 @@ export class TopiEditorView extends TextFileView {
 
 	createExtensions() {
 		const completeSource = getCompletions(this.completion);
+		// @ts-ignore
+		const file = this.app.vault.adapter.basePath + '/' + this.file?.path;
+		const runner = this.plugin.runner;
 		const extensions = [
 			topi(),
 			basicSetup,
@@ -62,8 +96,22 @@ export class TopiEditorView extends TextFileView {
 			lintGutter(),
 			gutter({
 				lineMarker(view, line) {
-					
+					const lineContent = view.state.doc.sliceString(line.from, line.to);
+					// if (lineContent.match(/^\s*===/)) {
+					// only allow global boughs for now
+					if (lineContent.match(/^\s*===/)) {
+						return playMarker;
+					}
 					return null;
+				},
+				domEventHandlers: {
+					mousedown(view, line) {
+						// @ts-ignore
+						const tree = syntaxTree(view.state);
+						const path = getClickedHierarchy(tree.topNode, view.state.doc, line.to);
+						if (path) runner.runTopi(['run', file, path]);
+						return true
+					}
 				},
 				initialSpacer: () => playMarker,
 			}),
@@ -71,7 +119,7 @@ export class TopiEditorView extends TextFileView {
 				position: 'fixed',
 				parent: document.body,
 			}),
-			topiLanguage.data.of({ autocomplete: completeSource }),
+			topiLanguage.data.of({autocomplete: completeSource}),
 			EditorView.lineWrapping,
 			linter(async () => {
 				if (!this.file) return [];
@@ -84,22 +132,18 @@ export class TopiEditorView extends TextFileView {
 			}),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
-					this.data = update.state.doc.toString();
 					this.completion.updateBoughs(this.data);
 					this.completion.updateSpeakers(this.data);
 					this.requestSave();
-					// @ts-ignore
-					const path = this.app.vault.adapter.basePath + '/' + this.file.path;
-					this.plugin.runner.runTopi(['run', path]);
 				}
 			}),
 			EditorView.theme({
-				'&.cm-focused': { outline: 0 },
-				'.cm-gutters': { backgroundColor: 'inherit' },
-				'.cm-activeLine': { backgroundColor: 'inherit' },
-				'.cm-cursor': { borderLeftColor: 'var(--text-normal)' },
-				'.cm-lint-marker': { marginTop: '25%' },
-				".cm-content, .cm-gutters, .cm-gutter": { minHeight: "100vh" }
+				'&.cm-focused': {outline: 0},
+				'.cm-gutters': {backgroundColor: 'inherit'},
+				'.cm-activeLine': {backgroundColor: 'inherit'},
+				'.cm-cursor': {borderLeftColor: 'var(--text-normal)'},
+				'.cm-lint-marker': {marginTop: '25%'},
+				".cm-content, .cm-gutters, .cm-gutter": {minHeight: "100vh"}
 			}, {
 				dark: document.body.hasClass('theme-dark'),
 			})
@@ -112,7 +156,7 @@ export class TopiEditorView extends TextFileView {
 	async onLoadFile(file: TFile): Promise<void> {
 		const content = await this.app.vault.read(file);
 		this.file = file;
-		this.cm.setState(EditorState.create({ extensions: this.createExtensions(), doc: content }));
+		this.cm.setState(EditorState.create({extensions: this.createExtensions(), doc: content}));
 	}
 
 	async onUnloadFile(file: TFile): Promise<void> {
@@ -126,15 +170,16 @@ export class TopiEditorView extends TextFileView {
 
 	setViewData(data: string, clear: boolean): void {
 		if (clear) this.clear();
-		else this.cm.dispatch({ changes: [{ from: 0, to: this.getViewData().length, insert: data }], sequential: true })
+		else this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: data}], sequential: true})
 	}
 
 	clear(): void {
-		this.cm.dispatch({ changes: [{ from: 0, to: this.getViewData().length, insert: '' }], sequential: true })
+		this.cm.dispatch({changes: [{from: 0, to: this.getViewData().length, insert: ''}], sequential: true})
 	}
 
 	async save(clear = false) {
 		try {
+			this.data = this.getViewData();
 			if (this.file) await this.app.vault.modify(this.file, this.getViewData());
 			if (clear) this.clear();
 		} catch (err) {
