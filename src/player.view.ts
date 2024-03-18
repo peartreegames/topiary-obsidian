@@ -1,9 +1,8 @@
 import TopiPlugin from "main";
-import { View, WorkspaceLeaf } from "obsidian";
+import {Notice, View, WorkspaceLeaf} from "obsidian";
 import { playButton, restartButton } from "./icons";
 
 export class TopiPlayerView extends View {
-
 	view: HTMLElement;
 	plugin: TopiPlugin;
 	history: Uint8Array[];
@@ -11,7 +10,7 @@ export class TopiPlayerView extends View {
 	constructor(leaf: WorkspaceLeaf, plugin: TopiPlugin) {
 		super(leaf);
 		this.plugin = plugin;
-		this.view = this.containerEl;
+		this.view = this.containerEl.createDiv();
 		this.view.addClass("topi-player");
 	}
 
@@ -51,6 +50,7 @@ export class TopiPlayerView extends View {
 			});
 			t.innerText = `# ${text.slice(1).join(', ')}`;
 		}
+		this.view.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
 		await new Promise(res => setTimeout(res, 100));
 		callback();
 	}
@@ -94,11 +94,12 @@ export class TopiPlayerView extends View {
 	};
 
 	createControlButtons(): Node {
-		const container = this.view.createDiv({
+		const container = this.containerEl.createDiv({
 			cls: 'topi-controls'
 		});
+		this.containerEl.prepend(container);
 		const play = container.createDiv({
-			cls: ['topi-controls-button', 'fixed'],
+			cls: ['topi-controls-button'],
 			attr: {
 				["aria-label-position"]: "bottom",
 				["aria-label"]: "Play from start",
@@ -116,6 +117,7 @@ export class TopiPlayerView extends View {
 		back.style.right = '75px';
 		back.addEventListener('mouseup', this.back);
 		back.innerHTML = restartButton;
+		container.createEl('hr');
 		return container;
 	};
 
@@ -136,9 +138,9 @@ export class TopiPlayerView extends View {
 	clear(): void {
 		// this.runner.ResetState();
 		this.history = [];
-		this.view.replaceChildren(this.createControlButtons());
+		this.view.replaceChildren();
+		this.createControlButtons();
 	};
-
 
 	choose(i: number): void {
 		this.view.createEl('hr');

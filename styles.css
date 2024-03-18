@@ -1,5 +1,7 @@
 .topi-player {
-	padding: 1.5em;
+	padding: 1.5em 1.5em 5em;
+	overflow-y: scroll;
+	margin-top: 1.5em;
 }
 
 .topi-speaker {
@@ -8,7 +10,7 @@
 
 .topi-text {
 	padding: 0;
-	margin: 0.1em;
+	margin: 0.5em 0.1em;
 }
 
 .topi-choice {
@@ -17,6 +19,28 @@
 
 .topi-error {
 	margin: 0.2em;
+	font-weight: bold;
+	text-align: center;
+}
+
+.topi-controls-button {
+	width: 1.5em;
+	height: 1.5em;
+	margin-right: 0.5em;
+}
+
+.topi-controls {
+	width: 100%;
+	display: inline-flex;
+	height: 1.5em;
+	margin: 0.5em;
+	position: fixed;
+}
+
+.topi-play {
+	width: 1em;
+	height: 1em;
+	margin-top: 20%;
 }
 
 @keyframes fadeIn {
