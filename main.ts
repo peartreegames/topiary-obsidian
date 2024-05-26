@@ -1,13 +1,13 @@
-import { addIcon, Plugin, WorkspaceLeaf } from 'obsidian';
-import { TopiEditorView } from "./src/editor.view";
-import { TopiLibrary } from "./src/library";
+import {addIcon, Plugin, WorkspaceLeaf} from 'obsidian';
+import {TopiEditorView} from "./src/editor.view";
+import {TopiLibrary} from "./src/library";
 import icon from 'icon.svg';
-import { DEFAULT_SETTINGS, TopiSettings, TopiSettingTab } from "./src/settings";
-import { TopiPlayerView } from 'src/player.view';
+import {DEFAULT_SETTINGS, TopiSettings, TopiSettingTab} from "./src/settings";
+import {TopiPlayerView} from 'src/player.view';
 
 export default class TopiPlugin extends Plugin {
 	settings: TopiSettings;
-	runner: TopiLibrary;
+	library: TopiLibrary;
 	player: TopiPlayerView;
 
 	async onload() {
@@ -21,10 +21,12 @@ export default class TopiPlugin extends Plugin {
 
 		await this.loadSettings();
 		this.addRibbonIcon('topi', 'New topi', async () => {
-			await this.app.vault.create("/untitled.topi", this.settings.template)
+			const newFile = await this.app.vault.create("/untitled.topi", this.settings.template)
+			const editor = this.app.workspace.getLeafById('tab');
+			editor?.openFile(newFile);
 		});
 
-		this.runner = new TopiLibrary(this);
+		this.library = new TopiLibrary(this);
 
 		this.registerView("topi-player", this.topiPlayerViewCreator);
 		const statusBarItemEl = this.addStatusBarItem();
@@ -40,7 +42,9 @@ export default class TopiPlugin extends Plugin {
 						.setTitle("New topi")
 						.setIcon("topi")
 						.onClick(async () => {
-							await file.vault.create(file.path + "/untitled.topi", this.settings.template, {})
+							const newFile = await file.vault.create(file.path + "/untitled.topi", this.settings.template, {});
+							const editor = this.app.workspace.getLeafById('tab');
+							editor?.openFile(newFile);
 						});
 				});
 			})
@@ -78,6 +82,6 @@ export default class TopiPlugin extends Plugin {
 	}
 
 	onunload() {
-		if (this.runner.child) this.runner.child.kill("SIGTERM");
+		if (this.library.child) this.library.child.kill("SIGTERM");
 	}
 }

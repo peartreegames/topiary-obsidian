@@ -1,17 +1,21 @@
 import TopiPlugin from "main";
-import {Notice, View, WorkspaceLeaf} from "obsidian";
+import {View, WorkspaceLeaf} from "obsidian";
 import { playButton, restartButton } from "./icons";
 
 export class TopiPlayerView extends View {
 	view: HTMLElement;
 	plugin: TopiPlugin;
-	history: Uint8Array[];
+	history: number[];
 	
 	constructor(leaf: WorkspaceLeaf, plugin: TopiPlugin) {
 		super(leaf);
 		this.plugin = plugin;
+		this.history = [];
 		this.view = this.containerEl.createDiv();
 		this.view.addClass("topi-player");
+		this.restart = this.restart.bind(this);
+		this.clear = this.clear.bind(this);
+		this.back = this.back.bind(this);
 	}
 
 	getIcon(): string {
@@ -26,11 +30,11 @@ export class TopiPlayerView extends View {
 		return "topi player";
 	}
 
-	async appendDialogue(msg: string, callback: () => void) {
+	async appendDialogue(msg: string, callback: () => void, wait: boolean = true) {
 		if (!this.view) return;
 		const text = msg.replace(/<.*?>/g, "").split('#');
 		const p = this.view.createEl('p', {
-			cls: ['fade-in', 'topi-text']
+			cls: [wait ? 'fade-in' : '', 'topi-text']
 		});
 
 		const regex = /:(.*?):\s*(.+)/;
@@ -46,12 +50,16 @@ export class TopiPlayerView extends View {
 					}
 		if (text.length > 1) {
 			const t = this.view.createEl('span', {
-				cls: ['fade-in', 'topi-tags']
+				cls: [wait ? 'fade-in' : '', 'topi-tags']
 			});
 			t.innerText = `# ${text.slice(1).join(', ')}`;
 		}
-		this.view.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
-		await new Promise(res => setTimeout(res, 100));
+		if (wait) {
+			this.view.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+			await new Promise(res => setTimeout(res, 100));
+		} else {
+			this.view.lastElementChild?.scrollIntoView({ behavior: 'auto' });
+		}
 		callback();
 	}
 
@@ -63,15 +71,22 @@ export class TopiPlayerView extends View {
 		p.innerText = msg;
 	}
 
-	appendChoice(msg: string, choose: (i: number) => void) {
+	appendChoice(msg: string, choose: (i: number) => void, autoChoiceIndex: number | null = null) {
 		if (!this.view) return;
 		this.view.createEl('hr');
 		const regex = /\[(\d+)\]\s+(.+)/;
 		const lines = msg.split('\n');
-		for (const line of lines) {
+		for (let i = 0; i < lines.length; i++){
+			if (autoChoiceIndex !== null) {
+				if (i === autoChoiceIndex) {
+					this.history.push(i);
+					return choose(i);
+				}
+				continue;
+			}
+			const line = lines[i];
 			const match = line.match(regex);
 			if (match) {
-				const index = parseInt(match[1]);
 				const text = match[2];
 				const p = this.view.createEl('p', {
 					cls: ['topi-text', 'fade-in', 'topi-choice']
@@ -81,17 +96,13 @@ export class TopiPlayerView extends View {
 				c.addEventListener("mouseup", () => {
 					const choices = this.view.findAll('.topi-choice');
 					for (const choice of choices) this.view.removeChild(choice);
-					choose(index);
+					this.history.push(i);
+					choose(i);
 				});
 				this.view.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
 			}
 		}
 	}
-
-	onError(msg: string) {
-		const p = this.view.createEl('p', { cls: 'error-text' });
-		p.innerText = msg;
-	};
 
 	createControlButtons(): Node {
 		const container = this.containerEl.createDiv({
@@ -123,26 +134,19 @@ export class TopiPlayerView extends View {
 
 	restart(): void {
 		this.clear();
+		this.history = [];
+		this.plugin.library.restart();
 	};
 
 	back(): void {
-		let last = this.view.lastChild;
-		while (last?.nodeName != 'HR' && last != null) {
-			this.view.removeChild(last);
-			last = this.view.lastChild;
-		}
-		if (last != null) this.view.removeChild(last);
-		// this.story.state.LoadJson(this.history.pop());
+		this.clear();
+		const his = this.history.length === 0 ? [] : this.history.slice(0, this.history.length - 1).reverse();
+		this.history = [];
+		this.plugin.library.rerun(his);
 	};
 
 	clear(): void {
-		// this.runner.ResetState();
-		this.history = [];
 		this.view.replaceChildren();
 		this.createControlButtons();
-	};
-
-	choose(i: number): void {
-		this.view.createEl('hr');
 	};
 }

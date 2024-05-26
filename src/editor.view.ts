@@ -4,7 +4,7 @@ import {
 } from "@codemirror/language";
 import {tags} from "@lezer/highlight";
 import {Notice, TextFileView, TFile, WorkspaceLeaf} from "obsidian";
-import {BlockInfo, EditorView, keymap, tooltips} from "@codemirror/view";
+import {EditorView, keymap, tooltips} from "@codemirror/view";
 import {gutter, GutterMarker} from '@codemirror/gutter';
 import {topi, topiLanguage} from "codemirror-lang-topi";
 import {indentWithTab} from "@codemirror/commands";
@@ -16,7 +16,8 @@ import {Compartment, EditorState, Text} from "@codemirror/state";
 import {syntaxTree} from "@codemirror/language";
 import {Completion, getCompletions} from "./completion";
 import {playButton} from "./icons";
-import {SyntaxNode, Tree} from "@lezer/common";
+import {SyntaxNode} from "@lezer/common";
+import {CompletionContext, CompletionResult} from "@codemirror/autocomplete";
 
 export const highlight = HighlightStyle.define([
 	{
@@ -71,11 +72,13 @@ export class TopiEditorView extends TextFileView {
 	file: TFile | null;
 	plugin: TopiPlugin;
 	completion: Completion;
+	completionSource: (ctx: CompletionContext) => (CompletionResult | null);
 
 	constructor(leaf: WorkspaceLeaf, plugin: TopiPlugin) {
 		super(leaf);
 		this.plugin = plugin;
-		this.completion = new Completion()
+		this.completion = new Completion(this.plugin.app);
+		this.completionSource = getCompletions(this.completion);
 		this.cm = new EditorView({
 			extensions: this.createExtensions(),
 			parent: this.contentEl,
@@ -83,10 +86,10 @@ export class TopiEditorView extends TextFileView {
 	}
 
 	createExtensions() {
-		const completeSource = getCompletions(this.completion);
 		// @ts-ignore
 		const file = this.app.vault.adapter.basePath + '/' + this.file?.path;
-		const runner = this.plugin.runner;
+		const runner = this.plugin.library;
+		const completions = topiLanguage.data.of({autocomplete: this.completionSource});
 		const extensions = [
 			topi(),
 			basicSetup,
@@ -97,8 +100,6 @@ export class TopiEditorView extends TextFileView {
 			gutter({
 				lineMarker(view, line) {
 					const lineContent = view.state.doc.sliceString(line.from, line.to);
-					// if (lineContent.match(/^\s*===/)) {
-					// only allow global boughs for now
 					if (lineContent.match(/^\s*===/)) {
 						return playMarker;
 					}
@@ -119,7 +120,7 @@ export class TopiEditorView extends TextFileView {
 				position: 'fixed',
 				parent: document.body,
 			}),
-			topiLanguage.data.of({autocomplete: completeSource}),
+			completions,
 			EditorView.lineWrapping,
 			linter(async () => {
 				if (!this.file) return [];
@@ -127,13 +128,11 @@ export class TopiEditorView extends TextFileView {
 				await this.save();
 				// @ts-ignore
 				const path = this.app.vault.adapter.basePath + '/' + this.file.path;
-				await this.plugin.runner.runCompile(['compile', path, '--dry'], diagnostics);
+				await this.plugin.library.runCompile(['compile', path, '--dry'], diagnostics);
 				return diagnostics;
 			}),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) {
-					this.completion.updateBoughs(this.data);
-					this.completion.updateSpeakers(this.data);
 					this.requestSave();
 				}
 			}),

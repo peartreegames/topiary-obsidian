@@ -2,6 +2,11 @@
 
 Adds topi file support along with syntax highlighting and compilation to obsidian.md
 
+Current used as a stop-gap before creating an actual editor. 
+
+## Installation
+
+
 ## Compilation 
 
 Downloaded the latest [topiary release](https://github.com/peartreegames/topiary/releases) executable (`topi`|`topi.exe`)

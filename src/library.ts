@@ -12,10 +12,13 @@ export class TopiLibrary {
 	plugin: TopiPlugin;
 	latestCompileId: string;
 	latestRunId: string;
+	currentArgs: string[];
+	history: number[];
 	child: ChildProcess;
 
 	constructor(plugin: TopiPlugin) {
 		this.plugin = plugin;
+		this.history = [];
 		this.continue = this.continue.bind(this);
 		this.choose = this.choose.bind(this);
 	}
@@ -36,6 +39,13 @@ export class TopiLibrary {
 		}
 	}
 
+	public async restart() { return this.runTopi(this.currentArgs); }
+
+	public async rerun(history: number[]) {
+		this.history = history;
+		return this.runTopi(this.currentArgs);
+	}
+
 	public async runTopi(args: string[]): Promise<void> {
 		const path = this.plugin.settings.path;
 		if (!path || !this.plugin.player) return;
@@ -43,18 +53,19 @@ export class TopiLibrary {
 			console.warn(`Could not find topi at ${path}`)
 			return;
 		}
+		this.currentArgs = args;
 		const id = Math.random().toString();
 		this.plugin.player.clear();
 		this.latestRunId = id;
 
 		// use spawn so we can provide input
 		if (this.child) this.child.kill("SIGTERM");
-		const child = spawn(path, args);
+		const child = spawn(path, this.currentArgs);
 		child.stdout.on('data', (data) => {
 			data = data.toString();
 			if (this.latestRunId !== id) return;
-			if (data.startsWith(":")) this.plugin.player.appendDialogue(data, this.continue);
-			if (data.startsWith("[")) this.plugin.player.appendChoice(data, this.choose);
+			if (data.startsWith(":")) this.plugin.player.appendDialogue(data, this.continue, this.history.length === 0);
+			if (data.startsWith("[")) this.plugin.player.appendChoice(data, this.choose, this.history?.pop());
 		});
 
 		child.stderr.on('data', (data) => {

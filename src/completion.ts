@@ -1,12 +1,25 @@
 import {CompletionContext, CompletionResult} from "@codemirror/autocomplete";
+import {App} from "obsidian";
 
 export class Completion {
 	speakers: { label: string }[];
 	boughs: { label: string }[];
 
-	constructor() {
+	constructor(app: App) {
 		this.speakers = [];
 		this.boughs = [];
+		for(const file of app.vault.getFiles()) {
+			switch (file.extension) {
+				case 'md': {
+					const data = app.metadataCache.getFileCache(file);
+					if (!data?.frontmatter?.tags?.includes("topiSpeaker")) continue;
+					this.speakers.push({ label: file.basename });
+					break;
+				}
+				case 'topi': {
+				}
+			}
+		}
 	}
 
 	updateSpeakers(source: string) {
@@ -31,7 +44,8 @@ export class Completion {
 }
 
 export const getCompletions = (completion: Completion) => (context: CompletionContext): CompletionResult | null => {
-	const speaker = context.matchBefore(/:/);
+	console.log(context)
+	const speaker = context.matchBefore(/^\s*:/);
 	if (speaker !== null) {
 		return {
 			from: speaker.from,
@@ -39,7 +53,7 @@ export const getCompletions = (completion: Completion) => (context: CompletionCo
 		}
 	}
 
-	const bough = context.matchBefore(/=>\s*/);
+	const bough = context.matchBefore(/^\s*=>\s/);
 	if (bough != null) return {
 		from:bough.from,
 		options: completion.boughs
