@@ -30,7 +30,7 @@ export class TopiPlayerView extends View {
 		return "topi player";
 	}
 
-	async appendDialogue(msg: string, callback: () => void, wait: boolean = true) {
+	async appendDialogue(msg: string, callback: () => void, wait = true) {
 		if (!this.view) return;
 		const text = msg.replace(/<.*?>/g, "").split('#');
 		const p = this.view.createEl('p', {
@@ -130,23 +130,23 @@ export class TopiPlayerView extends View {
 		back.innerHTML = restartButton;
 		container.createEl('hr');
 		return container;
-	};
+	}
 
 	restart(): void {
 		this.clear();
 		this.history = [];
 		this.plugin.library.restart();
-	};
+	}
 
 	back(): void {
 		this.clear();
 		const his = this.history.length === 0 ? [] : this.history.slice(0, this.history.length - 1).reverse();
 		this.history = [];
 		this.plugin.library.rerun(his);
-	};
+	}
 
 	clear(): void {
 		this.view.replaceChildren();
 		this.createControlButtons();
-	};
+	}
 }

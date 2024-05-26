@@ -83,7 +83,7 @@ export class TopiLibrary {
 
 	public async continue() {
 		if (!this.child) return;
-		this.child.stdin?.write(` ${EOL}`);
+		this.child.stdin?.write(EOL);
 	}
 
 	public async choose(i: number) {
