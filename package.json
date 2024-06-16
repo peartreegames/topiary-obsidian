@@ -1,6 +1,6 @@
 {
 	"name": "topiary-obsidian",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"description": "Topi language support for obsidian",
 	"main": "main.js",
 	"scripts": {

@@ -1,11 +1,11 @@
 {
 	"id": "topiary-obsidian",
 	"name": "Topiary",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"minAppVersion": "0.15.0",
 	"description": "Adds topi language support",
 	"author": "bgk",
 	"authorUrl": "https://github.com/peartreegames",
 	"fundingUrl": "https://github.com/sponsors/peartreegames",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }

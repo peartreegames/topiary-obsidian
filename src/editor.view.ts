@@ -28,7 +28,7 @@ export const highlight = HighlightStyle.define([
 	{tag: tags.string, color: "var(--h3-color)"},
 	{tag: [tags.number], color: "var(--text-accent)"},
 	{tag: tags.controlKeyword, color: "var(--h2-color)", fontStyle: "bold"},
-	{tag: [tags.lineComment, tags.comment], color: "var(--background-secondary-alt)", fontStyle: "italic"},
+	{tag: [tags.lineComment, tags.comment], fontStyle: "italic"},
 	{tag: tags.controlOperator, color: "var(--h6-color)"},
 	{tag: tags.tagName, color: "var(--tag-color)", fontStyle: "italic"},
 	{tag: tags.name, color: "var(--text-muted)"}
